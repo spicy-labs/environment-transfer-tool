@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CHILI Environment Transfer Tool</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>CHILI Environment Transfer Tool</h1>
+  </header>
+
+  <main>
+    <!-- Source Panel - 80% width -->
+    <section id="source-panel" class="panel source-panel">
+      <div class="panel-header">
+        <h2>Source</h2>
+        <span id="source-status" class="status disconnected">Disconnected</span>
+      </div>
+
+      <div class="connection-form">
+        <div class="form-row">
+          <label for="source-url">URL</label>
+          <input type="text" id="source-url" placeholder="https://cp-gmb-195.chili-publish.online/cp-gmb-195/Interface.aspx">
+        </div>
+        <div class="form-row">
+          <label for="source-apikey">API Key</label>
+          <input type="text" id="source-apikey" placeholder="Enter API Key">
+        </div>
+        <button id="source-connect-btn" class="btn btn-connect">Connect</button>
+      </div>
+
+      <div id="source-browser" class="file-browser hidden">
+        <div class="browser-toolbar">
+          <div class="resource-selector">
+            <label for="source-resource">Resource:</label>
+            <select id="source-resource">
+              <option value="Documents">Documents</option>
+              <option value="Assets">Assets</option>
+              <option value="Fonts">Fonts</option>
+              <option value="DocumentTemplates">Document Templates</option>
+              <option value="DataSources">Data Sources</option>
+              <option value="DynamicAssetProviders">Dynamic Asset Providers</option>
+              <option value="WorkSpaces">Workspaces</option>
+              <option value="ViewPreferences">View Preferences</option>
+              <option value="PdfExportSettings">PDF Export Settings</option>
+              <option value="HtmlExportSettings">HTML Export Settings</option>
+              <option value="ImageConversionProfiles">Image Conversion Profiles</option>
+              <option value="BarcodeTypes">Barcode Types</option>
+              <option value="ThreeDModels">3D Models</option>
+              <option value="FoldingSettings">Folding Settings</option>
+            </select>
+          </div>
+          <button id="transfer-btn" class="btn btn-transfer" disabled>Transfer Selected</button>
+        </div>
+
+        <div class="breadcrumb" id="source-breadcrumb">
+          <span class="breadcrumb-item breadcrumb-root" data-path="">Root</span>
+        </div>
+
+        <div class="file-list" id="source-file-list">
+          <div class="empty-state">Connect to browse files</div>
+        </div>
+
+        <div class="selection-info" id="selection-info">
+          <span id="selected-count">0</span> item(s) selected
+        </div>
+      </div>
+    </section>
+
+    <!-- Destination Panel - 20% width -->
+    <section id="dest-panel" class="panel dest-panel">
+      <div class="panel-header">
+        <h2>Destination</h2>
+        <span id="dest-status" class="status disconnected">Disconnected</span>
+      </div>
+
+      <div class="connection-form">
+        <div class="form-row">
+          <label for="dest-url">URL</label>
+          <input type="text" id="dest-url" placeholder="https://cp-htf-227.chili-publish.online/...">
+        </div>
+        <div class="form-row">
+          <label for="dest-apikey">API Key</label>
+          <input type="text" id="dest-apikey" placeholder="Enter API Key">
+        </div>
+        <button id="dest-connect-btn" class="btn btn-connect">Connect</button>
+      </div>
+
+      <div id="dest-info" class="dest-info hidden">
+        <div class="dest-connected-info">
+          <p>Connected to:</p>
+          <p id="dest-env-name" class="env-name"></p>
+          <p class="dest-hint">Select files on the source side and click "Transfer Selected" to begin.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Transfer Overlay -->
+  <div id="transfer-overlay" class="transfer-overlay hidden">
+    <div class="transfer-modal">
+      <h2 id="transfer-title">Transferring...</h2>
+      <div class="transfer-progress">
+        <div class="progress-bar">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+      </div>
+      <div class="transfer-log" id="transfer-log"></div>
+      <div id="transfer-actions" class="transfer-actions hidden">
+        <button id="transfer-close-btn" class="btn btn-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
