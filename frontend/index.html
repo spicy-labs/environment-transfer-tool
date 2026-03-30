@@ -47,9 +47,12 @@
               <option value="PdfExportSettings">PDF Export Settings</option>
               <option value="HtmlExportSettings">HTML Export Settings</option>
               <option value="ImageConversionProfiles">Image Conversion Profiles</option>
+              <option value="ImageTransformations">Image Transformations</option>
               <option value="BarcodeTypes">Barcode Types</option>
               <option value="ThreeDModels">3D Models</option>
               <option value="FoldingSettings">Folding Settings</option>
+              <option value="Users">Users</option>
+              <option value="UserGroups">User Groups</option>
             </select>
           </div>
           <button id="transfer-btn" class="btn btn-transfer" disabled>Transfer Selected</button>
@@ -59,8 +62,18 @@
           <span class="breadcrumb-item breadcrumb-root" data-path="">Root</span>
         </div>
 
+        <div id="search-controls" class="search-controls hidden">
+          <input type="text" id="search-name" placeholder="Search by name..." class="search-input">
+        </div>
+
         <div class="file-list" id="source-file-list">
           <div class="empty-state">Connect to browse files</div>
+        </div>
+
+        <div id="search-pagination" class="search-pagination hidden">
+          <button id="page-prev" class="btn btn-page" disabled>&laquo; Prev</button>
+          <span id="page-info">Page 1 / 1</span>
+          <button id="page-next" class="btn btn-page" disabled>Next &raquo;</button>
         </div>
 
         <div class="selection-info" id="selection-info">

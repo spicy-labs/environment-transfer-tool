@@ -523,3 +523,58 @@ main {
 .file-list-item.back-item .icon {
   color: #58a6ff;
 }
+
+/* Search controls */
+.search-controls {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: #0d1117;
+  border-bottom: 1px solid #21262d;
+  flex-shrink: 0;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e1e4e8;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.search-input:focus {
+  border-color: #58a6ff;
+}
+
+.search-input::placeholder {
+  color: #484f58;
+}
+
+/* Search pagination */
+.search-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background: #161b22;
+  border-top: 1px solid #30363d;
+  gap: 12px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: #8b949e;
+}
+
+.btn-page {
+  padding: 4px 12px;
+  background: #21262d;
+  color: #e1e4e8;
+  font-size: 12px;
+}
+
+.btn-page:hover:not(:disabled) {
+  background: #30363d;
+}

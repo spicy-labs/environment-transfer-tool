@@ -2,7 +2,7 @@ import { transferItems, type ResourceName } from "./transfer";
 import ChiliConnectorV1_1 from "@seancrowe/chiliconnector-v1_1";
 import { join } from "path";
 
-const PORT = 3000;
+const PORT = 3001;
 const FRONTEND_DIR = join(import.meta.dir, "frontend");
 
 // Store active connections keyed by a session concept (source/dest)
@@ -207,6 +207,49 @@ async function handleAPI(req: Request, pathname: string): Promise<Response> {
       return new Response(JSON.stringify({ items }), { headers });
     }
 
+    if (pathname === "/api/search" && req.method === "POST") {
+      const body = (await req.json()) as {
+        role: string;
+        resource: string;
+        name: string;
+        pageNum: number;
+        pageSize: number;
+      };
+      const { role, resource, name = "", pageNum = 1, pageSize = 50 } = body;
+
+      const conn = connections.get(role);
+      if (!conn) {
+        return new Response(
+          JSON.stringify({ error: "Not connected. Please connect first." }),
+          { status: 400, headers },
+        );
+      }
+
+      const connector = await conn.newConnector();
+      const resp = await connector.api.resourceSearchPagedWithSorting({
+        resourceName: resource as any,
+        name,
+        pageSize,
+        pageNum,
+        sortOn: "name",
+        sortOrder: "ascending",
+      });
+
+      if (!resp.ok) {
+        return new Response(
+          JSON.stringify({
+            error: `Failed to search ${resource}. Status: ${resp.status}`,
+          }),
+          { status: 500, headers },
+        );
+      }
+
+      const text = await resp.text();
+      const result = parseSearchXML(text);
+
+      return new Response(JSON.stringify(result), { headers });
+    }
+
     if (pathname === "/api/transfer/events" && req.method === "GET") {
       // SSE endpoint for transfer progress
       const stream = new ReadableStream<Uint8Array>({
@@ -345,6 +388,53 @@ function extractAttr(attrs: string, name: string): string | null {
   const regex = new RegExp(`${name}="([^"]*)"`, "i");
   const match = regex.exec(attrs);
   return match ? match[1] : null;
+}
+
+function parseSearchXML(xml: string): {
+  items: Array<{ name: string; id: string; isFolder: boolean; path: string }>;
+  numPages: number;
+  curPage: number;
+  found: number;
+  total: number;
+} {
+  const items: Array<{
+    name: string;
+    id: string;
+    isFolder: boolean;
+    path: string;
+  }> = [];
+
+  // Extract pagination from <searchresults> tag
+  const searchResultsMatch = /<searchresults\s([^>]*?)>/i.exec(xml);
+  let numPages = 1;
+  let curPage = 1;
+  let found = 0;
+  let total = 0;
+
+  if (searchResultsMatch) {
+    const attrs = searchResultsMatch[1];
+    numPages = parseInt(extractAttr(attrs, "numPages") || "1", 10);
+    curPage = parseInt(extractAttr(attrs, "curPage") || "1", 10);
+    found = parseInt(extractAttr(attrs, "found") || "0", 10);
+    total = parseInt(extractAttr(attrs, "total") || "0", 10);
+  }
+
+  // Extract items
+  const tagRegex = /<item\s([^>]*?)\/?\s*>/g;
+  let tagMatch;
+
+  while ((tagMatch = tagRegex.exec(xml)) !== null) {
+    const attrs = tagMatch[1];
+    const name = extractAttr(attrs, "name") || "";
+    const id = extractAttr(attrs, "id") || "";
+    const path = extractAttr(attrs, "relativePath") || "";
+
+    if (name || id) {
+      items.push({ name, id, isFolder: false, path });
+    }
+  }
+
+  return { items, numPages, curPage, found, total };
 }
 
 const server = Bun.serve({

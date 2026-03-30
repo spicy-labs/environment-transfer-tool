@@ -1,3 +1,24 @@
+// Resource display mode: "tree" uses folder browsing, "search" uses paginated search
+const RESOURCE_DISPLAY_MODE = {
+  Documents: "tree",
+  Assets: "tree",
+  Fonts: "search",
+  DocumentTemplates: "tree",
+  DataSources: "search",
+  DynamicAssetProviders: "search",
+  WorkSpaces: "tree",
+  ViewPreferences: "tree",
+  PdfExportSettings: "search",
+  HtmlExportSettings: "tree",
+  ImageConversionProfiles: "tree",
+  ImageTransformations: "search",
+  BarcodeTypes: "tree",
+  ThreeDModels: "tree",
+  FoldingSettings: "tree",
+  Users: "search",
+  UserGroups: "search",
+};
+
 // State
 const state = {
   source: { connected: false, base: "", env: "" },
@@ -6,6 +27,9 @@ const state = {
   pathStack: [],
   selectedItems: new Map(), // id -> {id, name, isFolder}
   transferring: false,
+  searchPage: 1,
+  searchNumPages: 1,
+  searchName: "",
 };
 
 // DOM elements
@@ -27,6 +51,13 @@ const destConnectBtn = $("#dest-connect-btn");
 const destStatus = $("#dest-status");
 const destInfo = $("#dest-info");
 const destEnvName = $("#dest-env-name");
+
+const searchControls = $("#search-controls");
+const searchNameInput = $("#search-name");
+const searchPagination = $("#search-pagination");
+const pagePrev = $("#page-prev");
+const pageNext = $("#page-next");
+const pageInfo = $("#page-info");
 
 const transferOverlay = $("#transfer-overlay");
 const transferTitle = $("#transfer-title");
@@ -67,7 +98,19 @@ sourceConnectBtn.addEventListener("click", async () => {
     state.source = { connected: true, base: result.base, env: result.env };
     setStatus(sourceStatus, "connected", `Connected: ${result.env}`);
     sourceBrowser.classList.remove("hidden");
-    browseTo("");
+
+    const mode = getDisplayMode();
+    if (mode === "search") {
+      sourceBreadcrumb.classList.add("hidden");
+      searchControls.classList.remove("hidden");
+      searchPagination.classList.remove("hidden");
+      searchTo(1);
+    } else {
+      sourceBreadcrumb.classList.remove("hidden");
+      searchControls.classList.add("hidden");
+      searchPagination.classList.add("hidden");
+      browseTo("");
+    }
   } catch (e) {
     setStatus(sourceStatus, "disconnected", "Disconnected");
     alert(`Connection failed: ${e.message}`);
@@ -108,10 +151,29 @@ sourceResource.addEventListener("change", () => {
   state.currentPath = "";
   state.pathStack = [];
   state.selectedItems.clear();
+  state.searchPage = 1;
+  state.searchName = "";
+  searchNameInput.value = "";
   updateSelectionUI();
-  updateBreadcrumb();
-  browseTo("");
+
+  const mode = getDisplayMode();
+  if (mode === "search") {
+    sourceBreadcrumb.classList.add("hidden");
+    searchControls.classList.remove("hidden");
+    searchPagination.classList.remove("hidden");
+    searchTo(1);
+  } else {
+    sourceBreadcrumb.classList.remove("hidden");
+    searchControls.classList.add("hidden");
+    searchPagination.classList.add("hidden");
+    updateBreadcrumb();
+    browseTo("");
+  }
 });
+
+function getDisplayMode() {
+  return RESOURCE_DISPLAY_MODE[sourceResource.value] || "tree";
+}
 
 // Set status indicator
 function setStatus(el, type, text) {
@@ -138,12 +200,67 @@ async function browseTo(path) {
   }
 }
 
+// Search mode: fetch paginated results
+async function searchTo(pageNum) {
+  state.searchPage = pageNum;
+  sourceFileList.innerHTML =
+    '<div class="loading-state"><div class="spinner"></div>Loading...</div>';
+
+  try {
+    const result = await api("/search", {
+      role: "source",
+      resource: sourceResource.value,
+      name: state.searchName,
+      pageNum,
+      pageSize: 50,
+    });
+
+    state.searchNumPages = result.numPages;
+    renderFileList(result.items);
+    updatePagination(result);
+  } catch (e) {
+    sourceFileList.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+  }
+}
+
+function updatePagination(result) {
+  pageInfo.textContent = `Page ${result.curPage} / ${result.numPages} (${result.found} items)`;
+  pagePrev.disabled = result.curPage <= 1;
+  pageNext.disabled = result.curPage >= result.numPages;
+}
+
+// Pagination controls
+pagePrev.addEventListener("click", () => {
+  if (state.searchPage > 1) {
+    searchTo(state.searchPage - 1);
+  }
+});
+
+pageNext.addEventListener("click", () => {
+  if (state.searchPage < state.searchNumPages) {
+    searchTo(state.searchPage + 1);
+  }
+});
+
+// Search input with debounce
+let searchTimeout = null;
+searchNameInput.addEventListener("input", () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    state.searchName = searchNameInput.value.trim();
+    state.searchPage = 1;
+    searchTo(1);
+  }, 300);
+});
+
 // Render file list
 function renderFileList(items) {
   sourceFileList.innerHTML = "";
 
-  // Add back navigation if not at root
-  if (state.pathStack.length > 0) {
+  const mode = getDisplayMode();
+
+  // Add back navigation if not at root (tree mode only)
+  if (mode === "tree" && state.pathStack.length > 0) {
     const backItem = document.createElement("div");
     backItem.className = "file-list-item back-item";
     backItem.innerHTML = `
@@ -162,7 +279,7 @@ function renderFileList(items) {
     sourceFileList.appendChild(backItem);
   }
 
-  if (items.length === 0 && state.pathStack.length === 0) {
+  if (items.length === 0 && (mode === "search" || state.pathStack.length === 0)) {
     sourceFileList.innerHTML =
       '<div class="empty-state">No items found</div>';
     return;
@@ -192,7 +309,7 @@ function renderFileList(items) {
     `;
 
     el.addEventListener("click", () => {
-      if (item.isFolder) {
+      if (item.isFolder && mode === "tree") {
         // Navigate into folder
         const newPath = state.currentPath
           ? state.currentPath + "\\" + item.name
@@ -364,7 +481,11 @@ transferCloseBtn.addEventListener("click", () => {
   state.selectedItems.clear();
   updateSelectionUI();
   // Re-render current view to clear selections
-  browseTo(state.currentPath);
+  if (getDisplayMode() === "search") {
+    searchTo(state.searchPage);
+  } else {
+    browseTo(state.currentPath);
+  }
 });
 
 // Log entry helper
